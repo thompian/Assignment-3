@@ -1,0 +1,161 @@
+#Assignment 2 Part C
+
+___Question & Hypothesis___
+
+```{r}
+#Do sister species (or close relatives) of Polyplacophora share similar geographic (latitudinal) ranges?
+
+#Hypothesis: I believe we will see a phylogenetic pattern in regards to latitudinal range. 
+#Prediction: I expect to see sister species to display similar ranges.
+```
+
+___Packages___
+
+```{r}
+#load all needed packages
+library(tidyverse)
+library(Biostrings)
+library(data.table)
+library(ggplot2)
+library(muscle)
+library(seqinr)
+library(phangorn)
+library(ape)
+library(phytools)
+```
+
+___Dowloading data from BOLD___
+
+```{r}
+#First I start by using the BOLD API to download all of the sequences for Polyplacophora, and select a portion of the available colums to ensure my work is not messy with unescesary data.
+polyplacophora <- read_tsv("http://www.boldsystems.org/index.php/API_Public/combined?taxon=polyplacophora&format=tsv")[, c("processid", "recordID", "bin_uri", "order_name", "family_name", "genus_name", "species_name", "lat", "lon", "nucleotides", "markercode", "country")]
+```
+
+___Data Checking and Exploration___
+
+```{r}
+#I just want to verify that my data set has enough data for an analysis.
+length(unique(polyplacophora$species_name))
+length(unique(polyplacophora$bin_uri))
+length(unique(polyplacophora$country))
+
+#Country data is the most important for my analysis, because if all samples were from one location, we would have a poor quality data set in regards to latitude.
+table(polyplacophora$country)
+
+#Here I am plotting lattitude to see if there is enough information.
+hist(polyplacophora$lat)
+#I also plot the nucleotide lengths to get an idea of the lenths in the data set.
+hist(nchar(polyplacophora$nucleotides))
+```
+
+___Data Filtering___
+
+```{r}
+#Here I filter out any data that has no information for: country, BIN, Latitude, and Species.
+polyplacophora.filter <- polyplacophora %>%
+  filter(!is.na(country)) %>%
+   filter(!is.na(bin_uri)) %>%
+    filter(!is.na(lat)) %>%
+     filter(!is.na(species_name))
+```
+
+___Post-Filter Data Checking and Exploration___
+
+```{r}
+#By checking how many unique species, BINs, and countries I have, I can make sure the data set is still of apropriate size.
+length(unique(polyplacophora.filter$species_name))
+length(unique(polyplacophora.filter$bin_uri))
+length(unique(polyplacophora.filter$country))
+
+#Here I am using tables and histograms to check my data.
+table(polyplacophora.filter$country)
+table(polyplacophora.filter$bin_uri)
+hist(polyplacophora.filter$lat)
+hist(nchar(polyplacophora.filter$nucleotides))
+
+```
+
+___Calculating geographic ranges___
+
+```{r}
+#Here I am calculating the distance between the max and min lat for each bin. therefore this can act as a "maximum latitudinal range" to use in analysis
+polyplacophora.filter.geo <- as.data.frame(with(polyplacophora.filter, tapply(lat, list(bin_uri), function(x) max(x)-min(x))))
+
+#Verifying that it is a data frame
+class(polyplacophora.filter.geo)
+
+#Renaming the column name to "Range"
+polyplacophora.filter.geo <- setNames(polyplacophora.filter.geo[1], nm = "Range")
+
+#My bins were stuck as row names, so I made a column for "bin_uri" for merging with the main dataset
+polyplacophora.filter.geo$bin_uri <- rownames(polyplacophora.filter.geo)
+
+#I then merged my range data with the main dataset
+polyplacophora.final <- merge(polyplacophora.filter, polyplacophora.filter.geo, by = "bin_uri")
+```
+
+___Picking one sequence per BIN and Alignment___
+
+```{r}
+#Here I used "sample_n" to sample at random, a single sequence per BIN.
+polyplacophora.BIN <- polyplacophora.final %>%
+  group_by(bin_uri) %>%
+  sample_n(1)
+#I then changed the nucliotides into a DNA String Set for alignment.
+polyplacophora.BIN$nucleotides <- DNAStringSet(polyplacophora.BIN$nucleotides)
+
+#Here I am aligning sequences, "log = "log.tx"" I used to create a file to check my alignment, and "verbose = TRUE" was used to print out all the process details on the log file.
+polyplacophora.alignment.BIN <- DNAStringSet(muscle::muscle(polyplacophora.BIN$nucleotides, log = "log.tx", verbose = TRUE))
+```
+
+___Tree Building & Final Visualization___
+
+```{r}
+#First step I took, was to change the alignment to the class 'DNAbin'
+dnaBin.polyplacophora.BIN <- as.DNAbin(polyplacophora.alignment.BIN)
+
+#Verify it is a 'DNAbin'
+class(dnaBin.polyplacophora.BIN)
+
+#Here I calculate the genetic distances using the TN93 model, because I dont want to assume that the base frequencies are equal, and I want the model to assume rate differences differently for transversions/transitions. I want it as a matrix, and I want samples with missing data (although there should be none) to be deleted (pairwise.deletion = TRUE).
+genetic.distance <- dist.dna(dnaBin.polyplacophora.BIN, model = "TN93", as.matrix = TRUE, pairwise.deletion = TRUE)
+
+#Using the genetic distances, I then produced a Neighbor Joining tree.
+NJ.tree <- NJ(genetic.distance)
+
+#Here I used my main data set to set the tip labels as BIN's.
+NJ.tree$tip.label <- as.character(polyplacophora.BIN$bin_uri)
+
+#Then I ploted my tree.
+plot(NJ.tree, cex=0.5)
+
+#Here I am assigning the tip labels, their associated range values.
+range <- polyplacophora.BIN$Range
+names(range) <- NJ.tree$tip.label
+
+#For my final visualization, I decided to produce a dot tree, that will show the distributions of ranges phylogenetically.
+dotTree(NJ.tree, range, method = "plotTree", cex = 0.1)
+
+```
+
+___Final Explanation___
+
+```{r}
+# With the production of the 'dot tree' I am able to analyse latitudinal rages phylogenetically. as can be seen on  the figure legend, the larger the blue dot, the larger that BIN's latitudinal range is. I hypothesised that range would show a pattern with phylogeny, and predicted that BINs with larger ranges would be more closely related. what I determined however, was that sister species do not necesarily share similar latitudinal ranges. certain clades on the tree do seem to have relatively similar sized blue dots, but what is interesting is that the largest ranges on the tree are quite distant from each other. this could potentially mean seperate instances of evolution in range size. For furthur studies, I would plan to statistically examine my data, while correcting for phylogeny.
+```
+
+___Fun___
+
+```{r}
+#For fun, I wanted to try a print my trees with species names, and in a more visually apealling format.
+
+#Using the genetic distances, I then produced a second Neighbor Joining tree.
+NJ.tree1 <- NJ(genetic.distance)
+
+#Here I used my main data set to set the tip labels as species.
+NJ.tree1$tip.label <- as.character(polyplacophora.BIN$species_name)
+
+#finally, I produced a fan tree to beter visualize distribution of the species.
+Fan.Tree <- plotTree(NJ.tree1,type="fan",fsize=0.7,lwd=1, ftype="i")
+```
+
