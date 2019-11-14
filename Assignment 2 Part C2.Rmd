@@ -81,6 +81,8 @@ ___Calculating geographic ranges___
 #Here I am calculating the distance between the max and min lat for each bin. therefore this can act as a "maximum latitudinal range" to use in analysis
 polyplacophora.filter.geo <- as.data.frame(with(polyplacophora.filter, tapply(lat, list(bin_uri), function(x) max(x)-min(x))))
 
+
+
 #Verifying that it is a data frame
 class(polyplacophora.filter.geo)
 
@@ -92,12 +94,26 @@ polyplacophora.filter.geo$bin_uri <- rownames(polyplacophora.filter.geo)
 
 #I then merged my range data with the main dataset
 polyplacophora.final <- merge(polyplacophora.filter, polyplacophora.filter.geo, by = "bin_uri")
+
+#H - After you calculate the distance, you should look at the values you obtained for maximum latiudinal range. You mainly want samples that have a range greater than 0 as this would indicate that there was a difference in the maximum and minimum range collected for that sample.
+min(polyplacophora.filter.geo$Range) #Minimum value of 0, zeros are not what you want as this means
+median(polyplacophora.filter.geo$Range) #Median value of 1.0384
+max(polyplacophora.filter.geo$Range) #Max range of 29.73,
+hist(polyplacophora.filter.geo$Range) #Majority of ranges are from 0-5, lets look at that further
+table(polyplacophora.filter.geo$Range) #Looking at counts, a range of 0 is found 27 times, 
+
+polyplacophora.filter.geo <- polyplacophora.filter.geo %>% #Removing ranges with values of 0, this will allow for your samples chosen to have range values of greater than 0, which will be more useful in comparison in your dot tree
+  filter(!Range == 0) %>%
+  arrange(Range) #Rearrange values in ascending order to quickly view if any zeros remain
+
+table(polyplacophora.filter.geo$Range)#Check to see value counts, no zeros remain which is what we want
 ```
 
 ___Picking one sequence per BIN and Alignment___
 
 ```{r}
 #Here I used "sample_n" to sample at random, a single sequence per BIN.
+#H - set seed so you get the same results everytime for your random sampling so that your graphs 
 polyplacophora.BIN <- polyplacophora.final %>%
   group_by(bin_uri) %>%
   sample_n(1)
@@ -143,6 +159,13 @@ ___Final Explanation___
 ```{r}
 # With the production of the 'dot tree' I am able to analyse latitudinal rages phylogenetically. as can be seen on  the figure legend, the larger the blue dot, the larger that BIN's latitudinal range is. I hypothesised that range would show a pattern with phylogeny, and predicted that BINs with larger ranges would be more closely related. what I determined however, was that sister species do not necesarily share similar latitudinal ranges. certain clades on the tree do seem to have relatively similar sized blue dots, but what is interesting is that the largest ranges on the tree are quite distant from each other. this could potentially mean seperate instances of evolution in range size. For furthur studies, I would plan to statistically examine my data, while correcting for phylogeny.
 ```
+#Statistical analysis - Histogram to see ranges
+#Delete samples that have a range of 0, they do not explain aynthing and were only sampled at one latitude, those species would need to be resampled, focus on samples with actual geographical ranges, 
+#Bin labels smaller
+#Check NAs after filtering
+#Set seed when random sampling so you get the same results everytime
+#Compare ranges western and eastern 
+
 
 ___Fun___
 
