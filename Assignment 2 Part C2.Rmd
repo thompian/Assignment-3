@@ -147,13 +147,16 @@ plot(NJ.tree, cex=0.5)
 
 #Here I am assigning the tip labels, their associated range values.
 range <- polyplacophora.BIN$Range
+
 names(range) <- NJ.tree$tip.label
 
 #For my final visualization, I decided to produce a dot tree, that will show the distributions of ranges phylogenetically.
 dotTree(NJ.tree, range, method = "plotTree", cex = 0.1)
 
-```
+#H - The dotTree visualization can be improved by decreasing the size of the BIN names as it is unreadable with all the BIN names piled on top of one another. Colour was changed to red to be more easily visible, legend length was increased as it was not previously viewable, and the plotting method was changed to phylogram from plotTree as it looks better visually when all the names and dots are aligned together.
 
+dotTree(NJ.tree, range, colors = "red", method = "phylogram", legend = TRUE, length = 9, fsize = 0.45, ftype = "i", cex = 0.45)
+```
 ___Final Explanation___
 
 ```{r}
