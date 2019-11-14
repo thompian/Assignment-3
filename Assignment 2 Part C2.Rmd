@@ -58,11 +58,11 @@ polyplacophora.filter <- polyplacophora %>%
     filter(!is.na(lat)) %>%
      filter(!is.na(species_name))
 
-#H - You can do some check heres to see if this removed all NAs/
-sum(is.na(polyplacophora.filter$country))
-sum(is.na(polyplacophora.filter$bin_uri))
-sum(is.na(polyplacophora.filter$lat))
-sum(is.na(polyplacophora.filter$species_name))
+#H - You can do some check heres to see if this removed all NAs
+sum(is.na(polyplacophora.filter$country))#0
+sum(is.na(polyplacophora.filter$bin_uri))#0
+sum(is.na(polyplacophora.filter$lat))#0
+sum(is.na(polyplacophora.filter$species_name))#0
 ```
 
 ___Post-Filter Data Checking and Exploration___
@@ -78,6 +78,10 @@ table(polyplacophora.filter$country)
 table(polyplacophora.filter$bin_uri)
 hist(polyplacophora.filter$lat)
 hist(nchar(polyplacophora.filter$nucleotides))
+
+
+  
+
 
 ```
 
@@ -101,14 +105,14 @@ polyplacophora.filter.geo$bin_uri <- rownames(polyplacophora.filter.geo)
 #I then merged my range data with the main dataset
 polyplacophora.final <- merge(polyplacophora.filter, polyplacophora.filter.geo, by = "bin_uri")
 
-#H - After you calculate the distance, you should look at the values you obtained for maximum latiudinal range. You mainly want samples that have a range greater than 0 as this would indicate that there was a difference in the maximum and minimum range collected for that sample.
+#H - After you calculate the distance, you should look at the values you obtained for maximum latitudinal range. You mainly want samples that have a range greater than 0 as this would indicate that there was a difference in the maximum and minimum range collected for that sample.
 min(polyplacophora.filter.geo$Range) #Minimum value of 0, zeros are not what you want as this means
 median(polyplacophora.filter.geo$Range) #Median value of 1.0384
 max(polyplacophora.filter.geo$Range) #Max range of 29.73,
-hist(polyplacophora.filter.geo$Range) #Majority of ranges are from 0-5, lets look at that further
+hist(polyplacophora.filter.geo$Range) #Majority of ranges have a value from 0-5, lets look at that further
 table(polyplacophora.filter.geo$Range) #Looking at counts, a range of 0 is found 27 times, 
 
-polyplacophora.filter.geo <- polyplacophora.filter.geo %>% #Removing ranges with values of 0, this will allow for your samples chosen to have range values of greater than 0, which will be more useful in comparison in your dot tree
+polyplacophora.filter.geo <- polyplacophora.filter.geo %>% #Removing ranges with values of 0, this will allow for your samples randomly chosen in the next part to have range values of greater than 0, which will be more useful in comparison in your dot tree
   filter(!Range == 0) %>%
   arrange(Range) #Rearrange values in ascending order to quickly view if any zeros remain
 
@@ -120,6 +124,7 @@ ___Picking one sequence per BIN and Alignment___
 ```{r}
 #Here I used "sample_n" to sample at random, a single sequence per BIN.
 #H - set seed so you get the same results everytime for your random sampling so that your graphs 
+set.seed(5)
 polyplacophora.BIN <- polyplacophora.final %>%
   group_by(bin_uri) %>%
   sample_n(1)
@@ -151,6 +156,7 @@ NJ.tree$tip.label <- as.character(polyplacophora.BIN$bin_uri)
 #Then I ploted my tree.
 plot(NJ.tree, cex=0.5)
 
+NJ.tree$tip.label
 #Here I am assigning the tip labels, their associated range values.
 range <- polyplacophora.BIN$Range
 
@@ -162,6 +168,23 @@ dotTree(NJ.tree, range, method = "plotTree", cex = 0.1)
 #H - The dotTree visualization can be improved by decreasing the size of the BIN names as it is unreadable with all the BIN names piled on top of one another. Colour was changed to red to be more easily visible, legend length was increased as it was not previously viewable, and the plotting method was changed to phylogram from plotTree as it looks better visually when all the names and dots are aligned together.
 
 dotTree(NJ.tree, range, colors = "red", method = "phylogram", legend = TRUE, length = 9, fsize = 0.45, ftype = "i", cex = 0.45)
+
+#H - I added an additional visualization that looks at both the latitude and longitude for each BIN, plots it on to a geographic map, and indicates relatedness through connecting lines. This can then be compared visually with the dotTree for a better understanding of the data
+
+polyplacophora.coordinates <- polyplacophora.BIN %>% #Obtaining the samples that were previously randomly selected for the dot tree as well as including longitude this time
+  select(bin_uri,lat,lon)
+
+polyplacophora.coordinates <- polyplacophora.coordinates %>% #Removing the bin_uri and changing the rownames to match so it is suitable for use as coordinates
+  remove_rownames %>%
+  column_to_rownames(var="bin_uri")
+
+plot(polyplacophora.coordinates, main = "Polyplacophora Geographic Locations", xlab = "Latitude", ylab = "Longitude" ) #Plotting the obtained latitude and longitude for each sample, a majority appear to have latitude > 0 and longitude < 0
+
+polyplacophora.coordinates.matrix <- as.matrix(polyplacophora.coordinates) #Turning the coordinates into a matrix for use in phylo.to.map
+
+phylo.to.map(tree = NJ.tree, coords = polyplacophora.coordinates.matrix, type = "direct", psize = 2, ftype = "off") #Plotting the samples directly on a geographic map. I chose not to show the phylogram and instead plot the points directly on to the geographic map & removed label names as the number of samples used was very high and the text ends up overlapping to the point where it is not readable otherwise
+
+#H - Great job overall, very nice formatting and commenting
 ```
 ___Final Explanation___
 
