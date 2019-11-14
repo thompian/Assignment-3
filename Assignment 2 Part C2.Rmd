@@ -57,6 +57,12 @@ polyplacophora.filter <- polyplacophora %>%
    filter(!is.na(bin_uri)) %>%
     filter(!is.na(lat)) %>%
      filter(!is.na(species_name))
+
+#H - You can do some check heres to see if this removed all NAs/
+sum(is.na(polyplacophora.filter$country))
+sum(is.na(polyplacophora.filter$bin_uri))
+sum(is.na(polyplacophora.filter$lat))
+sum(is.na(polyplacophora.filter$species_name))
 ```
 
 ___Post-Filter Data Checking and Exploration___
@@ -162,12 +168,6 @@ ___Final Explanation___
 ```{r}
 # With the production of the 'dot tree' I am able to analyse latitudinal rages phylogenetically. as can be seen on  the figure legend, the larger the blue dot, the larger that BIN's latitudinal range is. I hypothesised that range would show a pattern with phylogeny, and predicted that BINs with larger ranges would be more closely related. what I determined however, was that sister species do not necesarily share similar latitudinal ranges. certain clades on the tree do seem to have relatively similar sized blue dots, but what is interesting is that the largest ranges on the tree are quite distant from each other. this could potentially mean seperate instances of evolution in range size. For furthur studies, I would plan to statistically examine my data, while correcting for phylogeny.
 ```
-#Statistical analysis - Histogram to see ranges
-#Delete samples that have a range of 0, they do not explain aynthing and were only sampled at one latitude, those species would need to be resampled, focus on samples with actual geographical ranges, 
-#Bin labels smaller
-#Check NAs after filtering
-#Set seed when random sampling so you get the same results everytime
-#Compare ranges western and eastern 
 
 
 ___Fun___
