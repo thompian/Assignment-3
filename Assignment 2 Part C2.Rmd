@@ -1,5 +1,8 @@
 #Assignment 2 Part C
 
+#Primary contributor - Ian Thompson - Wrote the original script
+#Secondary contributor - Hoc Tran - Added 3 major edits and a few minor edits to the script
+
 ___Question & Hypothesis___
 
 ```{r}
